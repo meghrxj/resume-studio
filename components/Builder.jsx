@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useResumeStore, cleanLines } from "@/lib/store";
-import { AccordionItem } from "./ui";
+import { AccordionItem, SectionLayoutBar, moveItem } from "./ui";
+import AtsPanel from "./AtsPanel";
 import ContactSection from "./sections/ContactSection";
 import SummarySection from "./sections/SummarySection";
 import ExperienceSection from "./sections/ExperienceSection";
@@ -102,6 +103,55 @@ export default function Builder() {
   const bulletCount = (arr) =>
     arr.reduce((n, x) => n + cleanLines(x.bullets).length, 0);
 
+  const sectionOrder = current.sectionOrder || [
+    "summary",
+    "experience",
+    "education",
+    "projects",
+    "skills",
+    "certifications",
+  ];
+
+  const moveSection = (i, dir) =>
+    setDraft((d) => ({
+      ...d,
+      sectionOrder: moveItem(sectionOrder, i, dir),
+    }));
+
+  const common = { draft: current, setDraft, library, setLibrary };
+  const SECTIONS = {
+    summary: {
+      title: "Professional Summary",
+      count: current.summary.trim() ? 1 : 0,
+      body: <SummarySection {...common} />,
+    },
+    experience: {
+      title: "Work Experience",
+      count: current.experiences.length,
+      body: <ExperienceSection {...common} />,
+    },
+    education: {
+      title: "Education",
+      count: current.educations.length,
+      body: <EducationSection {...common} />,
+    },
+    projects: {
+      title: "Projects",
+      count: current.projects.length,
+      body: <ProjectsSection {...common} />,
+    },
+    skills: {
+      title: "Skills",
+      count: current.skills.categories.length,
+      body: <SkillsSection {...common} />,
+    },
+    certifications: {
+      title: "Certifications",
+      count: current.certifications.length,
+      body: <CertsSection {...common} />,
+    },
+  };
+
   return (
     <div className="min-h-screen">
       <a
@@ -196,59 +246,31 @@ export default function Builder() {
             <ContactSection draft={current} setDraft={setDraft} setLibrary={setLibrary} />
           </AccordionItem>
 
-          <AccordionItem
-            title="Professional Summary"
-            count={current.summary.trim() ? 1 : 0}
-            open={openSection === "summary"}
-            onToggle={() => toggle("summary")}
-          >
-            <SummarySection draft={current} setDraft={setDraft} library={library} setLibrary={setLibrary} />
-          </AccordionItem>
-
-          <AccordionItem
-            title="Work Experience"
-            count={current.experiences.length}
-            open={openSection === "experience"}
-            onToggle={() => toggle("experience")}
-          >
-            <ExperienceSection draft={current} setDraft={setDraft} library={library} setLibrary={setLibrary} />
-          </AccordionItem>
-
-          <AccordionItem
-            title="Education"
-            count={current.educations.length}
-            open={openSection === "education"}
-            onToggle={() => toggle("education")}
-          >
-            <EducationSection draft={current} setDraft={setDraft} library={library} setLibrary={setLibrary} />
-          </AccordionItem>
-
-          <AccordionItem
-            title="Projects"
-            count={current.projects.length}
-            open={openSection === "projects"}
-            onToggle={() => toggle("projects")}
-          >
-            <ProjectsSection draft={current} setDraft={setDraft} library={library} setLibrary={setLibrary} />
-          </AccordionItem>
-
-          <AccordionItem
-            title="Skills"
-            count={current.skills.categories.length}
-            open={openSection === "skills"}
-            onToggle={() => toggle("skills")}
-          >
-            <SkillsSection draft={current} setDraft={setDraft} library={library} setLibrary={setLibrary} />
-          </AccordionItem>
-
-          <AccordionItem
-            title="Certifications"
-            count={current.certifications.length}
-            open={openSection === "certs"}
-            onToggle={() => toggle("certs")}
-          >
-            <CertsSection draft={current} setDraft={setDraft} library={library} setLibrary={setLibrary} />
-          </AccordionItem>
+          {sectionOrder.map((id, i) => {
+            const cfg = SECTIONS[id];
+            if (!cfg) return null;
+            return (
+              <AccordionItem
+                key={id}
+                title={cfg.title}
+                count={cfg.count}
+                open={openSection === id}
+                onToggle={() => toggle(id)}
+                onMoveUp={() => moveSection(i, -1)}
+                onMoveDown={() => moveSection(i, 1)}
+                canUp={i > 0}
+                canDown={i < sectionOrder.length - 1}
+              >
+                <SectionLayoutBar
+                  sectionId={id}
+                  draft={current}
+                  setDraft={setDraft}
+                  isFirst={i === 0}
+                />
+                {cfg.body}
+              </AccordionItem>
+            );
+          })}
 
           <p className="px-1 pt-1 text-[11px] leading-relaxed text-muted">
             {current.experiences.length} roles, {bulletCount(current.experiences)}{" "}
@@ -259,6 +281,7 @@ export default function Builder() {
         </div>
 
         <div className="lg:sticky lg:top-[70px] lg:h-[calc(100vh-86px)] lg:overflow-y-auto">
+          <AtsPanel draft={current} setDraft={setDraft} />
           <div className="mb-2 flex items-center justify-between px-1">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
               Live preview
